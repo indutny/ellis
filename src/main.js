@@ -1,8 +1,8 @@
 import { cast } from '../lib/ellis';
 
-const INITIAL_DEPTH = 3;
-const VELOCITY = [ 0, 1, 0 ];
-const ITERATIONS = 1000;
+const INITIAL_DEPTH = 10;
+const VELOCITY = [ 0, 0, 1 ];
+const ITERATIONS = 100;
 
 export default class App {
   constructor({ width, height, scale }) {
@@ -16,6 +16,8 @@ export default class App {
     this.elem = canvas;
 
     this.ctx = canvas.getContext('2d');
+
+    this.iteration = 0;
   }
 
   draw() {
@@ -24,32 +26,50 @@ export default class App {
     const scale = this.scale;
     const ctx = this.ctx;
 
+    const bigRadius = Math.sqrt(this.width ** 2 + this.height ** 2);
+
     for (let i = 0; i < ITERATIONS; i++) {
-      const x = Math.random() * this.width;
-      const y = Math.random() * this.height;
-      const mx = (x - cx) * scale;
-      const my = (y - cy) * scale;
+      const off = this.iteration++;
+      const x = (off % this.width);
+      const y = Math.floor(off / this.height);
 
-      const [ l, theta, phi ] = cast([ mx, -INITIAL_DEPTH, my ], VELOCITY);
-
-      const checkerX = Math.round(64 * (theta / Math.PI));
-      const checkerY = Math.round(64 * (phi / (2 * Math.PI)));
-      const checker = (checkerX + checkerY) % 2 === 0;
-
-      let color;
-      if (l > 0) {
-        color = checker ? 'rgb(255,0,0)' : 'rgb(0,0,255)';
-      } else {
-        color = checker ? 'rgb(0,255,0)' : 'rgb(0,0,0)';
+      if (y > this.height) {
+        return;
       }
 
-      ctx.fillStyle = color;
+      const mx = (x - cx) / bigRadius * scale;
+      const my = (y - cy) / bigRadius * scale;
+
+      const [ l, theta, phi ] = cast([ mx, my, -INITIAL_DEPTH ], VELOCITY,
+        1.1 * INITIAL_DEPTH);
+
+      const checkerX = Math.sin(theta) * Math.cos(phi);
+      const checkerY = Math.sin(theta) * Math.sin(phi);
+      let one = (checkerX + checkerY) % 2;
+      const comp = 1 - one;
+
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      if (Math.abs(l) < INITIAL_DEPTH) {
+        g = 255;
+      } else if (l > 0) {
+        r = 0xf3 * one + 0x0c * comp;
+        g = 0xc6 * one + 0x0a * comp;
+        b = 0x77 * one + 0x3e * comp;
+      } else {
+        r = 0x40 * one + 0xeb * comp;
+        g = 0x70 * one + 0xba * comp;
+        b = 0x76 * one + 0xb9 * comp;
+      }
+
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
       ctx.fillRect(x, y, 1, 1);
     }
   }
 }
 
-const app = new App({ width: 1024, height: 1024, scale: 4 / 1024 });
+const app = new App({ width: 1024, height: 1024, scale: 1 });
 document.body.appendChild(app.elem);
 
 const draw = () => {
